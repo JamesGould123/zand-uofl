@@ -1,0 +1,4 @@
+[submodule "external/ChipmunkSharp"]
+	path = external/ChipmunkSharp
+	url = https://github.com/JamesGould123/ChipmunkSharp.git
+	branch = v7.0.0.Leaf

@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Box2DSharp" Version="0.6.0"/>
+        <ProjectReference Include="..\external\ChipmunkSharp\ChipmunkSharp\ChipmunkSharp.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Zand.Core.Tests"/>
+    </ItemGroup>
+
+</Project>

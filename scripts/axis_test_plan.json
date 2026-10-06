@@ -1,0 +1,294 @@
+{
+  "repeat_count": 5,
+  "defaults": {
+    "WorldSizeOptions": ["Large2048"],
+    "CaAlgorithms": ["PerCellDirectional"],
+    "RbSimulations": ["Box2D"],
+    "CouplingModes": ["WeakOneWayRbToCa"],
+    "LiquidPhysicsModes": ["None"],
+    "GravityModes": ["Normal"],
+    "TempBodyLifetimes": ["Persistent"],
+    "TempBodyMergings": ["NoMerging"],
+    "ChunkSizes": ["ThirtyTwo"],
+    "ActiveRectangleModes": ["Enabled"],
+    "ParallelismModes": ["ParallelLargestFirst"],
+    "LiquidPressureModes": ["Disabled"],
+    "SameTickMoveGuards": ["Disabled"],
+    "RowSweepOrders": ["BottomUp"],
+    "CellRenderSmoothings": ["Disabled"],
+    "BallisticParticleModes": ["None"],
+    "EjectionResistanceModes": ["Impulse"],
+    "ParticleCollisionModes": ["Disabled"],
+    "LandingSearchModes": ["Narrow"],
+    "EjectionImpulseTargetModes": ["CenterOfMass"],
+    "EjectionDeflectionModes": ["Disabled"],
+    "ReattachmentModes": ["VelocitySettling"],
+    "RasterizationBodyParallelisms": ["Sequential"],
+    "RasterizationCellParallelisms": ["Sequential"],
+    "BallisticResolutionParallelisms": ["Sequential"],
+    "RenderParallelisms": ["Sequential"]
+  },
+  "axes": [
+    {
+      "axis": "WorldSize",
+      "manifest_column": "world_width",
+      "menu_selection_field": "WorldSizeOptions",
+      "mode": "HeavyBenchmark",
+      "values": ["Small512", "Medium1024", "Large2048"],
+      "ignore_columns": ["world_height"],
+      "metrics": ["phase_gridupdate_avg_ms"],
+      "note": "manifest_column is world_width, not world_size - the manifest has no single world_size column, but width/height always co-vary with it (always square), so width is the usable proxy. world_height is ignored when matching blocks, since it changes together with world_width; otherwise no two sizes would ever share a block and no test would run."
+    },
+    {
+      "axis": "CaAlgorithm",
+      "manifest_column": "ca_algorithm",
+      "menu_selection_field": "CaAlgorithms",
+      "mode": "CoreScenariosReasonable",
+      "values": ["PerCell", "PerCellRandomized", "PerCellDirectional", "Margolus", "MargolusGuarded", "MargolusRandomized", "MargolusGuardedRandomized"],
+      "metrics": ["phase_gridupdate_avg_ms"]
+    },
+    {
+      "axis": "RbSimulation",
+      "manifest_column": "rb_simulation",
+      "menu_selection_field": "RbSimulations",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Box2D", "Chipmunk"],
+      "metrics": ["phase_physicsstep_avg_ms"]
+    },
+    {
+      "axis": "CouplingMode",
+      "manifest_column": "coupling",
+      "menu_selection_field": "CouplingModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["None", "WeakOneWayRbToCa", "WeakOneWayCaToRb", "WeakTwoWayCaFirst", "WeakTwoWayRbFirst"],
+      "note": "Liquid physics is pinned to None and temp body merging to NoMerging. Under the reasonable configs' own liquid physics, None and WeakOneWayRbToCa are invalid on three of the four configs, and with merging on they are invalid on every config (those couplings never create temp bodies, so only NoMerging is valid for them). Pinning both makes every coupling testable on every config; liquid physics and merging have their own axes.",
+      "pairings": [
+        {
+          "when": ["None", "WeakOneWayRbToCa", "WeakOneWayCaToRb", "WeakTwoWayCaFirst", "WeakTwoWayRbFirst"],
+          "set": { "LiquidPhysicsModes": ["None"], "TempBodyMergings": ["NoMerging"] }
+        }
+      ]
+    },
+    {
+      "axis": "LiquidPhysics",
+      "manifest_column": "liquid_physics",
+      "menu_selection_field": "LiquidPhysicsModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["None", "ProbabilisticCollision", "VelocityDamping", "BuoyancyAndDamping"],
+      "config_filter": { "CouplingModes": ["WeakOneWayCaToRb", "WeakTwoWayCaFirst", "WeakTwoWayRbFirst"] },
+      "pairings": [
+        {
+          "when": ["None", "ProbabilisticCollision", "VelocityDamping", "BuoyancyAndDamping"],
+          "set": { "TempBodyLifetimes": ["Ephemeral"] }
+        }
+      ],
+      "metrics": ["phase_physicsstep_avg_ms"],
+      "note": "WeakOneWayRbToCa is liquid-physics-inert, so only None is valid for it - testing it here would drop incomplete blocks. Excluded the same way TempBodyLifetime and TempBodyMerging exclude it. Temp body lifetime is pinned to Ephemeral for every value: ProbabilisticCollision works by turning random liquid cells into temp bodies, which Persistent lifetime never does, so under the reasonable configs' Persistent lifetime it would behave exactly like None (ScenarioRunner now rejects that combination)."
+    },
+    {
+      "axis": "Gravity",
+      "manifest_column": "gravity",
+      "menu_selection_field": "GravityModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Normal", "High"]
+    },
+    {
+      "axis": "TempBodyLifetime",
+      "manifest_column": "temp_body_lifetime",
+      "menu_selection_field": "TempBodyLifetimes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Ephemeral", "Persistent"],
+      "note": "Only the couplings that create temporary bodies for settled sand use this setting, so only the reasonable configs with those couplings are run.",
+      "config_filter": { "CouplingModes": ["WeakOneWayCaToRb", "WeakTwoWayCaFirst", "WeakTwoWayRbFirst"] },
+      "metrics": ["phase_physicsstep_avg_ms"]
+    },
+    {
+      "axis": "TempBodyMerging",
+      "manifest_column": "temp_body_merging",
+      "menu_selection_field": "TempBodyMergings",
+      "mode": "CoreScenariosReasonable",
+      "values": ["NoMerging", "HorizontalMerging", "RectangleMerging"],
+      "config_filter": { "CouplingModes": ["WeakOneWayCaToRb", "WeakTwoWayCaFirst", "WeakTwoWayRbFirst"] },
+      "metrics": ["phase_physicsstep_avg_ms", "phase_couplingafterca_avg_ms", "phase_couplingbeforerb_avg_ms"],
+      "note": "Only the couplings that create temporary bodies for sand use this setting, so only the reasonable configs with those couplings are run."
+    },
+    {
+      "axis": "ChunkSize",
+      "manifest_column": "chunk_size",
+      "menu_selection_field": "ChunkSizes",
+      "mode": "HeavyBenchmark",
+      "values": ["Disabled", "Eight", "Sixteen", "ThirtyTwo", "SixtyFour", "OneTwentyEight"],
+      "metrics": ["phase_gridupdate_avg_ms"],
+      "pairings": [
+        {
+          "when": ["Disabled"],
+          "set": { "ParallelismModes": ["Sequential"], "ActiveRectangleModes": ["Disabled"] }
+        },
+        {
+          "when": ["Eight", "Sixteen", "ThirtyTwo", "SixtyFour", "OneTwentyEight"],
+          "set": { "ParallelismModes": ["ParallelLargestFirst"], "ActiveRectangleModes": ["Enabled"] }
+        }
+      ],
+      "ignore_columns": ["parallelism", "active_rectangle"],
+      "note": "Chunking only pays off with parallelism, so Disabled is compared as its best case (Sequential, no active rectangle, which is inert without chunks) against chunked sizes under ParallelLargestFirst. Parallel vs ParallelLargestFirst is left to the Parallelism axis. The world is Large2048 (the Heavy Benchmark default) so chunking has enough grid to skip."
+    },
+    {
+      "axis": "ActiveRectangle",
+      "manifest_column": "active_rectangle",
+      "menu_selection_field": "ActiveRectangleModes",
+      "mode": "HeavyBenchmark",
+      "values": ["Disabled", "Enabled"],
+      "metrics": ["phase_gridupdate_avg_ms"]
+    },
+    {
+      "axis": "Parallelism",
+      "manifest_column": "parallelism",
+      "menu_selection_field": "ParallelismModes",
+      "mode": "HeavyBenchmark",
+      "values": ["Sequential", "Parallel", "ParallelLargestFirst"],
+      "metrics": ["phase_gridupdate_avg_ms"]
+    },
+    {
+      "axis": "LiquidPressure",
+      "manifest_column": "liquid_pressure",
+      "menu_selection_field": "LiquidPressureModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Disabled", "Enabled"],
+      "metrics": ["phase_gridupdate_avg_ms"]
+    },
+    {
+      "axis": "SameTickMoveGuard",
+      "manifest_column": "same_tick_move_guard",
+      "menu_selection_field": "SameTickMoveGuards",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Disabled", "Enabled"],
+      "metrics": ["phase_gridupdate_avg_ms"]
+    },
+    {
+      "axis": "RowSweepOrder",
+      "manifest_column": "row_sweep_order",
+      "menu_selection_field": "RowSweepOrders",
+      "mode": "CoreScenariosReasonable",
+      "values": ["BottomUp", "TopDown", "Oscillating", "Randomized"],
+      "note": "Only the PerCell family reads the row sweep order (Margolus ignores it), so only the reasonable configs using a PerCell algorithm are run.",
+      "config_filter": { "CaAlgorithms": ["PerCell", "PerCellRandomized", "PerCellDirectional"] },
+      "metrics": ["phase_gridupdate_avg_ms"]
+    },
+    {
+      "axis": "CellRenderSmoothing",
+      "manifest_column": "cell_render_smoothing",
+      "menu_selection_field": "CellRenderSmoothings",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Disabled", "Smoothing", "NeighborFill"],
+      "metrics": ["phase_render_avg_ms"],
+      "note": "Low priority per its own doc comment (cosmetic-only), but fully testable through this pipeline since rendering is never skipped."
+    },
+    {
+      "axis": "BallisticParticles",
+      "manifest_column": "ballistics",
+      "menu_selection_field": "BallisticParticleModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["None", "PointSwarm", "TempRigidBody"],
+      "metrics": ["phase_ballisticparticles_avg_ms", "phase_physicsstep_avg_ms"],
+      "pairings": [
+        {
+          "when": ["None", "PointSwarm", "TempRigidBody"],
+          "set": {
+            "EjectionResistanceModes": ["Impulse"],
+            "ParticleCollisionModes": ["Disabled"],
+            "LandingSearchModes": ["Narrow"],
+            "EjectionImpulseTargetModes": ["CenterOfMass"],
+            "EjectionDeflectionModes": ["Disabled"],
+            "ReattachmentModes": ["VelocitySettling"],
+            "BallisticResolutionParallelisms": ["Sequential"]
+          }
+        }
+      ],
+      "note": "The reasonable configs' ballistic tuning (Wide, ContactPoint, FaceNormal, collision on) is invalid with ballistics None, and the PointSwarm-only options are invalid with TempRigidBody. The baseline set above is the only tuning valid for all three values, so every value runs with it and blocks stay matched."
+    },
+    {
+      "axis": "EjectionResistance",
+      "manifest_column": "ejection_resistance",
+      "menu_selection_field": "EjectionResistanceModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Impulse", "VelocityDamping"],
+      "pairings": [
+        {
+          "when": ["Impulse", "VelocityDamping"],
+          "set": { "EjectionImpulseTargetModes": ["CenterOfMass"] }
+        }
+      ],
+      "ignore_columns": [],
+      "note": "The impulse target only applies under Impulse resistance, and the reasonable configs use ContactPoint, which would make VelocityDamping invalid. Pinning CenterOfMass keeps both values valid and matched."
+    },
+    {
+      "axis": "ParticleCollision",
+      "manifest_column": "particle_collision",
+      "menu_selection_field": "ParticleCollisionModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Disabled", "Enabled"],
+      "metrics": ["phase_ballisticparticles_avg_ms"]
+    },
+    {
+      "axis": "LandingSearch",
+      "manifest_column": "landing_search",
+      "menu_selection_field": "LandingSearchModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Narrow", "Wide"]
+    },
+    {
+      "axis": "EjectionImpulseTarget",
+      "manifest_column": "impulse_target",
+      "menu_selection_field": "EjectionImpulseTargetModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["CenterOfMass", "ContactPoint"]
+    },
+    {
+      "axis": "EjectionDeflection",
+      "manifest_column": "deflection",
+      "menu_selection_field": "EjectionDeflectionModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["Disabled", "FaceNormal"]
+    },
+    {
+      "axis": "Reattachment",
+      "manifest_column": "reattachment",
+      "menu_selection_field": "ReattachmentModes",
+      "mode": "CoreScenariosReasonable",
+      "values": ["VelocitySettling", "OnCollision"]
+    },
+    {
+      "axis": "RasterizationBodyParallelism",
+      "manifest_column": "rasterization_body_parallelism",
+      "menu_selection_field": "RasterizationBodyParallelisms",
+      "mode": "HeavyBenchmark",
+      "values": ["Sequential", "Parallel"],
+      "metrics": ["phase_couplingbeforeca_avg_ms", "phase_couplingafterca_avg_ms"]
+    },
+    {
+      "axis": "RasterizationCellParallelism",
+      "manifest_column": "rasterization_cell_parallelism",
+      "menu_selection_field": "RasterizationCellParallelisms",
+      "mode": "HeavyBenchmark",
+      "values": ["Sequential", "Parallel"],
+      "metrics": ["phase_couplingbeforeca_avg_ms", "phase_couplingafterca_avg_ms"]
+    },
+    {
+      "axis": "BallisticResolutionParallelism",
+      "manifest_column": "ballistic_resolution_parallelism",
+      "menu_selection_field": "BallisticResolutionParallelisms",
+      "mode": "HeavyBenchmark",
+      "values": ["Sequential", "Parallel"],
+      "metrics": ["phase_ballisticparticles_avg_ms"]
+    },
+    {
+      "axis": "RenderParallelism",
+      "manifest_column": "render_parallelism",
+      "menu_selection_field": "RenderParallelisms",
+      "mode": "HeavyBenchmark",
+      "values": ["Sequential", "Parallel"],
+      "metrics": ["phase_render_avg_ms"],
+      "note": "Compare phase_render_avg_ms rather than only avg_frame_ms, since the gain is confined to the render phase. Heavy runs use the reasonable configs' Smoothing render mode."
+    }
+  ]
+}
